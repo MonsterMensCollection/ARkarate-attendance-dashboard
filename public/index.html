@@ -1,73 +1,68 @@
-<!doctype html>
-<div id="message"></div>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Karate Attendance Login</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
 
+  <div class="container">
+    <h2>Login</h2>
 
-<div id="authBox">
-<input id="email" placeholder="Email" />
-<input id="password" type="password" placeholder="Password" />
-<button id="loginBtn">Login</button>
-<button id="logoutBtn" style="display:none">Logout</button>
-</div>
+    <div>
+      <label for="email">Email</label>
+      <input type="email" id="email" placeholder="Enter email" required>
+    </div>
 
+    <div>
+      <label for="password">Password</label>
+      <input type="password" id="password" placeholder="Enter password" required>
+    </div>
 
-<p class="muted">Admin goes to student manager. Teacher goes to attendance dashboard.</p>
-</div>
+    <button type="button" onclick="login()">Login</button>
+    <p id="message" style="color:red; text-align:center; margin-top:10px;"></p>
+  </div>
 
+  <!-- Firebase + App JS -->
+  <script type="module">
+    import { loginUser, getUserRole, autoRedirect } from "./assets/app.js";
 
-<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js"></script>
-<script src="/assets/app.js"></script>
-<script>
-// UI wiring (index)
-const loginBtn = document.getElementById('loginBtn');
-const logoutBtn = document.getElementById('logoutBtn');
-const email = document.getElementById('email');
-const password = document.getElementById('password');
-const message = document.getElementById('message');
+    async function login() {
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
+      const msg = document.getElementById("message");
 
+      msg.innerText = ""; // clear previous message
 
-loginBtn.addEventListener('click', async () => {
-try {
-await signIn(email.value, password.value);
-message.innerText = 'Signed in. Checking role...';
-} catch (e) {
-message.innerText = 'Login failed: ' + e.message;
-}
-});
+      try {
+        const userCredential = await loginUser(email, password);
+        const user = userCredential.user;
 
+        const role = await getUserRole(user.uid);
+        if (!role) {
+          msg.innerText = "Your account has no role assigned.";
+          return;
+        }
 
-logoutBtn.addEventListener('click', async () => {
-await signOut();
-message.innerText = 'Logged out';
-});
+        // Redirect based on role
+        if (role === "admin") {
+          window.location.href = "admin.html";
+        } else if (role === "teacher") {
+          window.location.href = "teacher.html";
+        } else {
+          msg.innerText = "You are not allowed to login.";
+        }
 
+      } catch (error) {
+        msg.innerText = "Login failed: " + error.message;
+      }
+    }
 
-// On auth state changed, check role and redirect
-auth.onAuthStateChanged(async (u) => {
-if (!u) {
-logoutBtn.style.display = 'none';
-loginBtn.style.display = 'inline-block';
-return;
-}
-loginBtn.style.display = 'none';
-logoutBtn.style.display = 'inline-block';
+    // Optional: redirect if user already logged in
+    autoRedirect();
+  </script>
 
-
-const roleDoc = await db.collection('roles').doc(u.uid).get();
-if (!roleDoc.exists) {
-message.innerText = 'No role assigned. Contact admin.';
-return;
-}
-const role = roleDoc.data().role;
-if (role === 'admin') {
-window.location.href = '/admin.html';
-} else if (role === 'teacher') {
-window.location.href = '/teacher.html';
-} else {
-message.innerText = 'Unknown role: ' + role;
-}
-});
-</script>
 </body>
 </html>
