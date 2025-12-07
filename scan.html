@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scan Attendance</title>
+
+    <!-- QR Scanner Library -->
+    <script src="https://unpkg.com/html5-qrcode"></script>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 20px;
+        }
+
+        #reader {
+            width: 300px;
+            margin: auto;
+        }
+
+        .msg {
+            margin-top: 20px;
+            font-size: 18px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <h2>Scan QR to Mark Attendance</h2>
+    <div id="reader"></div>
+    <div class="msg" id="message"></div>
+
+    <!-- Firebase -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import {
+            getFirestore, doc, setDoc, serverTimestamp
+        } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        /* ------------------------------------
+           🔥 PASTE YOUR FIREBASE CONFIG HERE
+        -------------------------------------- */
+        const firebaseConfig = {
+            apiKey: "YOUR_KEY",
+            authDomain: "YOUR_PROJECT.firebaseapp.com",
+            projectId: "YOUR_PROJECT",
+            storageBucket: "YOUR_PROJECT.appspot.com",
+            messagingSenderId: "SENDER",
+            appId: "APP_ID"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        /* -------------------------
+           🚀 Start QR Scanner
+        -------------------------- */
+        function startScanner() {
+            const qr = new Html5Qrcode("reader");
+
+            qr.start(
+                { facingMode: "environment" },
+                { fps: 10, qrbox: 250 },
+                async (decodedText) => {
+                    document.getElementById("message").innerText =
+                        "Scanned: " + decodedText;
+
+                    try {
+                        // decodedText must be studentID
+                        const today = new Date().toISOString().split("T")[0];
+
+                        await setDoc(
+                            doc(db, "attendance", `${decodedText}_${today}`),
+                            {
+                                studentId: decodedText,
+                                date: today,
+                                time: serverTimestamp()
+                            }
+                        );
+
+                        document.getElementById("message").innerText =
+                            "Attendance Marked ✔";
+
+                    } catch (e) {
+                        document.getElementById("message").innerText =
+                            "Error marking attendance";
+                    }
+
+                    qr.stop();
+                },
+                (errorMessage) => {
+                    /* Ignore scan errors */
+                }
+            );
+        }
+
+        startScanner();
+    </script>
+
+</body>
+</html>
