@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Karate Attendance Dashboard</title>
+
+<style>
+    body {
+        margin: 0;
+        font-family: Arial, sans-serif;
+        background: #f2f4f8;
+    }
+
+    header {
+        background: #ff3b30;
+        color: white;
+        padding: 20px;
+        text-align: center;
+        font-size: 26px;
+        font-weight: bold;
+    }
+
+    .container {
+        padding: 20px;
+    }
+
+    .card {
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+
+    .title {
+        font-size: 20px;
+        font-weight: bold;
+        margin-bottom: 10px;
+    }
+
+    .student-item {
+        padding: 10px;
+        border-bottom: 1px solid #ddd;
+        display: flex;
+        justify-content: space-between;
+        font-size: 18px;
+    }
+
+    .present {
+        color: green;
+        font-weight: bold;
+    }
+
+    .absent {
+        color: red;
+        font-weight: bold;
+    }
+
+    .no-data {
+        text-align: center;
+        padding: 40px;
+        color: #888;
+        font-size: 18px;
+    }
+
+</style>
+
+<!-- Firebase Library -->
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js"></script>
+
+</head>
+<body>
+
+<header>🥋 Karate Attendance Dashboard</header>
+
+<div class="container">
+
+    <!-- Today Attendance Card -->
+    <div class="card">
+        <div class="title">Today's Attendance</div>
+        <div id="todayList"></div>
+    </div>
+
+    <!-- Student List Card -->
+    <div class="card">
+        <div class="title">All Students</div>
+        <div id="studentList"></div>
+    </div>
+
+</div>
+
+<script>
+    // ---------------------------------
+    // 🔥 Replace this with YOUR Firebase config
+    // ---------------------------------
+    const firebaseConfig = {
+        apiKey: "YOUR_API_KEY",
+        authDomain: "YOUR_PROJECT.firebaseapp.com",
+        projectId: "YOUR_PROJECT_ID",
+        storageBucket: "YOUR_PROJECT.appspot.com",
+        messagingSenderId: "YOUR_SENDER",
+        appId: "YOUR_APP_ID"
+    };
+
+    const app = firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    // Today's Date
+    const today = new Date().toISOString().split("T")[0];
+
+    // ---------------------------------
+    // 🚀 Load All Students
+    // ---------------------------------
+    function loadStudents() {
+        db.collection("students")
+            .orderBy("studentId")
+            .onSnapshot(snapshot => {
+                const container = document.getElementById("studentList");
+                container.innerHTML = "";
+
+                if (snapshot.empty) {
+                    container.innerHTML = `<div class='no-data'>No Students Found</div>`;
+                    return;
+                }
+
+                snapshot.forEach(doc => {
+                    let data = doc.data();
+
+                    container.innerHTML += `
+                        <div class="student-item">
+                            <span>${data.studentId} - ${data.name}</span>
+                            <span id="status-${data.studentId}" class="absent">Absent</span>
+                        </div>
+                    `;
+                });
+            });
+    }
+
+    // ---------------------------------
+    // 🚀 Load Today's Attendance
+    // ---------------------------------
+    function loadAttendance() {
+        db.collection("attendance").doc(today)
+            .collection("students")
+            .onSnapshot(snapshot => {
+                const todayList = document.getElementById("todayList");
+                todayList.innerHTML = "";
+
+                if (snapshot.empty) {
+                    todayList.innerHTML = `<div class='no-data'>No attendance yet</div>`;
+                }
+
+                snapshot.forEach(doc => {
+                    let sid = doc.id;
+
+                    todayList.innerHTML += `
+                        <div class="student-item">
+                            <span>${sid}</span>
+                            <span class="present">Present ✔️</span>
+                        </div>
+                    `;
+
+                    // Update status in student list
+                    let statusElement = document.getElementById("status-" + sid);
+                    if (statusElement) {
+                        statusElement.classList.remove("absent");
+                        statusElement.classList.add("present");
+                        statusElement.innerHTML = "Present ✔️";
+                    }
+                });
+            });
+    }
+
+    loadStudents();
+    loadAttendance();
+</script>
+
+</body>
+</html>
