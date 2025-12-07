@@ -1,0 +1,68 @@
+<!doctype html>
+row.className = 'student-item';
+row.innerHTML = `
+<div>
+<strong>${d.studentId}</strong> — ${d.name} <span class="muted">(${d.belt||''})</span>
+</div>
+<div>
+<button class="qrBtn" data-id="${d.studentId}" data-name="${encodeURIComponent(d.name)}">QR</button>
+<button class="delBtn" data-id="${d.studentId}">Delete</button>
+</div>
+`;
+studentsList.appendChild(row);
+});
+
+
+// wire QR and delete
+document.querySelectorAll('.qrBtn').forEach(b => {
+b.addEventListener('click', () => {
+const sid = b.getAttribute('data-id');
+const name = decodeURIComponent(b.getAttribute('data-name'));
+const qrUrl = `/scan.html?qr=${encodeURIComponent(sid)}`;
+window.open(qrUrl, '_blank');
+});
+});
+
+
+document.querySelectorAll('.delBtn').forEach(b => {
+b.addEventListener('click', async () => {
+const sid = b.getAttribute('data-id');
+if (confirm('Delete ' + sid + '?')) {
+await db.collection('students').doc(sid).delete();
+}
+});
+});
+
+
+});
+
+
+addBtn.addEventListener('click', async () => {
+const name = sName.value.trim();
+const belt = sBelt.value.trim();
+if (!name) return alert('Name required');
+
+
+// generate studentId KRT-XXX sequentially using timestamp
+const now = Date.now();
+const id = 'KRT-' + String(now).slice(-6); // quick unique id
+
+
+await db.collection('students').doc(id).set({
+studentId: id,
+name: name,
+belt: belt,
+createdAt: firebase.firestore.FieldValue.serverTimestamp()
+});
+
+
+sName.value = '';
+sBelt.value = '';
+});
+
+
+// require auth else redirect
+auth.onAuthStateChanged(u => { if (!u) window.location.href = '/'; });
+</script>
+</body>
+</html>
