@@ -1,182 +1,73 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Karate Attendance Dashboard</title>
+<!doctype html>
+<div id="message"></div>
 
-<style>
-    body {
-        margin: 0;
-        font-family: Arial, sans-serif;
-        background: #f2f4f8;
-    }
 
-    header {
-        background: #ff3b30;
-        color: white;
-        padding: 20px;
-        text-align: center;
-        font-size: 26px;
-        font-weight: bold;
-    }
-
-    .container {
-        padding: 20px;
-    }
-
-    .card {
-        background: white;
-        border-radius: 12px;
-        padding: 20px;
-        margin-bottom: 20px;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-    }
-
-    .title {
-        font-size: 20px;
-        font-weight: bold;
-        margin-bottom: 10px;
-    }
-
-    .student-item {
-        padding: 10px;
-        border-bottom: 1px solid #ddd;
-        display: flex;
-        justify-content: space-between;
-        font-size: 18px;
-    }
-
-    .present {
-        color: green;
-        font-weight: bold;
-    }
-
-    .absent {
-        color: red;
-        font-weight: bold;
-    }
-
-    .no-data {
-        text-align: center;
-        padding: 40px;
-        color: #888;
-        font-size: 18px;
-    }
-
-</style>
-
-<!-- Firebase Library -->
-<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js"></script>
-
-</head>
-<body>
-
-<header>🥋 Karate Attendance Dashboard</header>
-
-<div class="container">
-
-    <!-- Today Attendance Card -->
-    <div class="card">
-        <div class="title">Today's Attendance</div>
-        <div id="todayList"></div>
-    </div>
-
-    <!-- Student List Card -->
-    <div class="card">
-        <div class="title">All Students</div>
-        <div id="studentList"></div>
-    </div>
-
+<div id="authBox">
+<input id="email" placeholder="Email" />
+<input id="password" type="password" placeholder="Password" />
+<button id="loginBtn">Login</button>
+<button id="logoutBtn" style="display:none">Logout</button>
 </div>
 
+
+<p class="muted">Admin goes to student manager. Teacher goes to attendance dashboard.</p>
+</div>
+
+
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js"></script>
+<script src="/assets/app.js"></script>
 <script>
-    // ---------------------------------
-    // 🔥 Replace this with YOUR Firebase config
-    // ---------------------------------
-const firebaseConfig = {
-  apiKey: "AIzaSyA4OVgeKWvAIklI8hTibj3kT3C9KgBsp2w",
-  authDomain: "ar-karate-e580f.firebaseapp.com",
-  projectId: "ar-karate-e580f",
-  storageBucket: "ar-karate-e580f.firebasestorage.app",
-  messagingSenderId: "1057516841712",
-  appId: "1:1057516841712:web:53cdd653879cb678df3035",
-  measurementId: "G-7K6PYQ1HWB"
-};
+// UI wiring (index)
+const loginBtn = document.getElementById('loginBtn');
+const logoutBtn = document.getElementById('logoutBtn');
+const email = document.getElementById('email');
+const password = document.getElementById('password');
+const message = document.getElementById('message');
 
-    const app = firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
 
-    // Today's Date
-    const today = new Date().toISOString().split("T")[0];
+loginBtn.addEventListener('click', async () => {
+try {
+await signIn(email.value, password.value);
+message.innerText = 'Signed in. Checking role...';
+} catch (e) {
+message.innerText = 'Login failed: ' + e.message;
+}
+});
 
-    // ---------------------------------
-    // 🚀 Load All Students
-    // ---------------------------------
-    function loadStudents() {
-        db.collection("students")
-            .orderBy("studentId")
-            .onSnapshot(snapshot => {
-                const container = document.getElementById("studentList");
-                container.innerHTML = "";
 
-                if (snapshot.empty) {
-                    container.innerHTML = `<div class='no-data'>No Students Found</div>`;
-                    return;
-                }
+logoutBtn.addEventListener('click', async () => {
+await signOut();
+message.innerText = 'Logged out';
+});
 
-                snapshot.forEach(doc => {
-                    let data = doc.data();
 
-                    container.innerHTML += `
-                        <div class="student-item">
-                            <span>${data.studentId} - ${data.name}</span>
-                            <span id="status-${data.studentId}" class="absent">Absent</span>
-                        </div>
-                    `;
-                });
-            });
-    }
+// On auth state changed, check role and redirect
+auth.onAuthStateChanged(async (u) => {
+if (!u) {
+logoutBtn.style.display = 'none';
+loginBtn.style.display = 'inline-block';
+return;
+}
+loginBtn.style.display = 'none';
+logoutBtn.style.display = 'inline-block';
 
-    // ---------------------------------
-    // 🚀 Load Today's Attendance
-    // ---------------------------------
-    function loadAttendance() {
-        db.collection("attendance").doc(today)
-            .collection("students")
-            .onSnapshot(snapshot => {
-                const todayList = document.getElementById("todayList");
-                todayList.innerHTML = "";
 
-                if (snapshot.empty) {
-                    todayList.innerHTML = `<div class='no-data'>No attendance yet</div>`;
-                }
-
-                snapshot.forEach(doc => {
-                    let sid = doc.id;
-
-                    todayList.innerHTML += `
-                        <div class="student-item">
-                            <span>${sid}</span>
-                            <span class="present">Present ✔️</span>
-                        </div>
-                    `;
-
-                    // Update status in student list
-                    let statusElement = document.getElementById("status-" + sid);
-                    if (statusElement) {
-                        statusElement.classList.remove("absent");
-                        statusElement.classList.add("present");
-                        statusElement.innerHTML = "Present ✔️";
-                    }
-                });
-            });
-    }
-
-    loadStudents();
-    loadAttendance();
+const roleDoc = await db.collection('roles').doc(u.uid).get();
+if (!roleDoc.exists) {
+message.innerText = 'No role assigned. Contact admin.';
+return;
+}
+const role = roleDoc.data().role;
+if (role === 'admin') {
+window.location.href = '/admin.html';
+} else if (role === 'teacher') {
+window.location.href = '/teacher.html';
+} else {
+message.innerText = 'Unknown role: ' + role;
+}
+});
 </script>
-
 </body>
 </html>
