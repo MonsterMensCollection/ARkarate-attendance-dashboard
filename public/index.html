@@ -3,70 +3,177 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Karate Attendance Login</title>
+  <title>Karate Attendance App</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 
-  <div class="container">
-    <h2>Karate Attendance Login</h2>
+  <!-- LOGIN VIEW -->
+  <div id="loginView" class="container">
+    <h2>Login</h2>
+    <input type="email" id="email" placeholder="Enter email" required>
+    <input type="password" id="password" placeholder="Enter password" required>
+    <button onclick="login()">Login</button>
+    <p id="loginMsg" style="color:red; text-align:center; margin-top:10px;"></p>
+  </div>
 
-    <div>
-      <label for="email">Email</label>
-      <input type="email" id="email" placeholder="Enter email" required>
-    </div>
+  <!-- ADMIN VIEW -->
+  <div id="adminView" class="container" style="display:none;">
+    <h2>Admin Dashboard</h2>
+    <input type="text" id="studentName" placeholder="Student Name">
+    <input type="text" id="studentBelt" placeholder="Belt Color">
+    <input type="text" id="studentId" placeholder="Student ID">
+    <button onclick="addStudentUI()">Add Student</button>
+    <h3>Student List</h3>
+    <div id="studentList"></div>
+    <button class="logout-btn" onclick="logout()">Logout</button>
+  </div>
 
-    <div>
-      <label for="password">Password</label>
-      <input type="password" id="password" placeholder="Enter password" required>
-    </div>
-
-    <button type="button" onclick="login()">Login</button>
-    <p id="message" style="color:red; text-align:center; margin-top:10px;"></p>
+  <!-- TEACHER VIEW -->
+  <div id="teacherView" class="container" style="display:none;">
+    <h2>Teacher Dashboard</h2>
+    <div id="reader"></div>
+    <p id="scanMsg" style="text-align:center; color:green;"></p>
+    <h3>Attendance</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Student ID</th>
+          <th>Name</th>
+          <th>Date</th>
+        </tr>
+      </thead>
+      <tbody id="attendanceTable"></tbody>
+    </table>
+    <button class="logout-btn" onclick="logout()">Logout</button>
   </div>
 
   <!-- Firebase + App JS -->
   <script type="module">
-    import { loginUser, getUserRole, autoRedirect } from "./assets/app.js";
+    import { loginUser, logoutUser, getUserRole, addStudent, deleteStudent, getAllStudents, markAttendance, autoRedirect } from "./assets/app.js";
 
+    // DOM Elements
+    const loginView = document.getElementById("loginView");
+    const adminView = document.getElementById("adminView");
+    const teacherView = document.getElementById("teacherView");
+
+    const loginMsg = document.getElementById("loginMsg");
+    const studentListDiv = document.getElementById("studentList");
+    const attendanceTable = document.getElementById("attendanceTable");
+    const scanMsg = document.getElementById("scanMsg");
+
+    // Login function
     async function login() {
       const email = document.getElementById("email").value.trim();
       const password = document.getElementById("password").value;
-      const msg = document.getElementById("message");
-
-      msg.innerText = "";
-
-      if (!email || !password) {
-        msg.innerText = "Please enter email and password.";
-        return;
-      }
+      loginMsg.innerText = "";
 
       try {
         const userCredential = await loginUser(email, password);
         const user = userCredential.user;
-
         const role = await getUserRole(user.uid);
-        if (!role) {
-          msg.innerText = "Your account has no role assigned.";
-          return;
-        }
 
-        // Redirect based on role
         if (role === "admin") {
-          window.location.href = "admin.html";
+          showAdminView();
         } else if (role === "teacher") {
-          window.location.href = "teacher.html";
+          showTeacherView();
         } else {
-          msg.innerText = "You are not allowed to login.";
+          loginMsg.innerText = "You are not allowed to login.";
         }
 
       } catch (error) {
-        msg.innerText = "Login failed: " + error.message;
+        loginMsg.innerText = "Login failed: " + error.message;
       }
     }
 
-    // Auto-redirect if user already logged in
+    // Logout
+    async function logout() {
+      await logoutUser();
+      adminView.style.display = "none";
+      teacherView.style.display = "none";
+      loginView.style.display = "block";
+    }
+
+    // Show admin dashboard
+    async function showAdminView() {
+      loginView.style.display = "none";
+      adminView.style.display = "block";
+
+      await loadStudents();
+    }
+
+    // Show teacher dashboard
+    async function showTeacherView() {
+      loginView.style.display = "none";
+      teacherView.style.display = "block";
+
+      await loadAttendance();
+      startQRScanner();
+    }
+
+    // Load students list for admin
+    async function loadStudents() {
+      const students = await getAllStudents();
+      studentListDiv.innerHTML = "";
+      students.forEach(student => {
+        const div = document.createElement("div");
+        div.className = "student-card";
+        div.innerHTML = `
+          <span>${student.name} (${student.id}) - ${student.belt}</span>
+          <button class="delete-btn" onclick="deleteStudentUI('${student.id}')">Delete</button>
+        `;
+        studentListDiv.appendChild(div);
+      });
+    }
+
+    // Add student from admin
+    async function addStudentUI() {
+      const name = document.getElementById("studentName").value;
+      const belt = document.getElementById("studentBelt").value;
+      const id = document.getElementById("studentId").value;
+
+      if (!name || !belt || !id) return alert("Fill all fields");
+
+      await addStudent(name, belt, id);
+      document.getElementById("studentName").value = "";
+      document.getElementById("studentBelt").value = "";
+      document.getElementById("studentId").value = "";
+      loadStudents();
+    }
+
+    // Delete student
+    async function deleteStudentUI(id) {
+      await deleteStudent(id);
+      loadStudents();
+    }
+
+    // Load attendance for teacher
+    async function loadAttendance() {
+      const students = await getAllStudents();
+      attendanceTable.innerHTML = "";
+      const today = new Date().toISOString().split("T")[0];
+
+      students.forEach(student => {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td>${student.id}</td>
+          <td>${student.name}</td>
+          <td>${today}</td>
+        `;
+        attendanceTable.appendChild(row);
+      });
+    }
+
+    // QR Scanner
+    function startQRScanner() {
+      // Use html5-qrcode or similar library
+      // Example placeholder:
+      scanMsg.innerText = "Scan QR codes here (functionality to implement with html5-qrcode)";
+    }
+
+    // Auto redirect if already logged in
     autoRedirect();
+
   </script>
 
 </body>
