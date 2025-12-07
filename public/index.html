@@ -9,7 +9,7 @@
 <body>
 
   <div class="container">
-    <h2>Login</h2>
+    <h2>Karate Attendance Login</h2>
 
     <div>
       <label for="email">Email</label>
@@ -30,11 +30,16 @@
     import { loginUser, getUserRole, autoRedirect } from "./assets/app.js";
 
     async function login() {
-      const email = document.getElementById("email").value;
+      const email = document.getElementById("email").value.trim();
       const password = document.getElementById("password").value;
       const msg = document.getElementById("message");
 
-      msg.innerText = ""; // clear previous message
+      msg.innerText = "";
+
+      if (!email || !password) {
+        msg.innerText = "Please enter email and password.";
+        return;
+      }
 
       try {
         const userCredential = await loginUser(email, password);
@@ -60,7 +65,7 @@
       }
     }
 
-    // Optional: redirect if user already logged in
+    // Auto-redirect if user already logged in
     autoRedirect();
   </script>
 
