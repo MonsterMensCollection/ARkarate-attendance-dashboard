@@ -1,3 +1,19 @@
+
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  width: 100%;
+  overflow-x: hidden;
+}
+
+.table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+
 /* ---------------- BASE STYLES ---------------- */
 body {
   font-family: Arial, sans-serif;
@@ -13,8 +29,10 @@ h2, h3 {
 }
 
 .container {
-  width: 90%;
-  max-width: 400px;
+  width: 100%;
+  max-width: 100%;
+  padding: 15px;
+  box-sizing: border-box;
   margin: 50px auto;
   background-color: #fff;
   border-radius: 12px;
@@ -131,8 +149,8 @@ th {
 }
 
 @media (max-width: 600px) {
-  table, thead, tbody, th, td, tr {
-    display: block;
+
+  table, thead, tbody, tr {
     width: 100%;
   }
 
@@ -141,25 +159,30 @@ th {
   }
 
   tr {
+    display: block;
+    background: #fff;
     margin-bottom: 12px;
-    border: 1px solid #ddd;
-    padding: 10px;
+    padding: 12px;
     border-radius: 8px;
-    background: #f9f9f9;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
   }
 
   td {
     display: flex;
     justify-content: space-between;
+    align-items: center;
     padding: 6px 0;
     font-size: 14px;
+    width: 100%;
   }
 
   td::before {
     font-weight: bold;
+    color: #333;
   }
 
   td:nth-child(1)::before { content: "ID"; }
   td:nth-child(2)::before { content: "Name"; }
   td:nth-child(3)::before { content: "Date"; }
 }
+
